@@ -1,0 +1,20 @@
+# UI/UX DESIGN SYSTEM & RULES FOR CLINE
+
+## 1. DESIGN AESTHETIC (Modern B2B / Linear / Stripe Style)
+- NEVER use generic purple/pink AI gradients.
+- Primary palette: Slate/Zinc/Neutral tones with sharp accent colors (e.g., Emerald, Emerald-500, Cyan, or Electric Blue).
+- Dark mode by default: Background `#09090b` or `zinc-950`, text `zinc-100`.
+- Borders: Subtle and clean (`border-white/10` or `border-zinc-800`).
+- Typography: Use Inter, Plus Jakarta Sans, or Geist sans-serif fonts. High contrast for readability.
+
+## 2. COMPONENT STACK
+- Framework: Next.js (App Router) or React + Vite.
+- Styling: Tailwind CSS.
+- UI Library: Shadcn/ui conventions (clean, accessible, headless).
+- Icons: Lucide-react (NEVER use emojis as icons).
+- Animations: Framer Motion for smooth micro-interactions (hover states, page transitions).
+
+## 3. LAYOUT & SPACING
+- Generous padding and whitespace (`py-16` or `py-24` for sections).
+- Max width containers (`max-w-7xl mx-auto px-4`).
+- Responsive first: Ensure grid layouts scale from `grid-cols-1` to `md:grid-cols-3`.

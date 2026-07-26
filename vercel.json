@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "dist/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/manifest.webmanifest", "dest": "/dist/manifest.webmanifest" },
+    { "src": "/kurs", "dest": "/dist/kurs/index.html" },
+    { "src": "/sozdik", "dest": "/dist/sozdik/index.html" },
+    { "src": "/(.*)", "dest": "/dist/$1" }
+  ]
+}
