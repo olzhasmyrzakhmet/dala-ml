@@ -8,4 +8,4 @@ const nextConfig = {
   pageExtensions: ['js', 'jsx', 'mdx', 'ts', 'tsx'],
 }
 
-module.exports = nextConfig
+export default nextConfig;
