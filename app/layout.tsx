@@ -1,5 +1,12 @@
 import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
+
+const inter = Inter({
+  subsets: ['latin', 'cyrillic-ext'],
+  display: 'swap',
+  variable: '--font-inter',
+})
 
 export const metadata: Metadata = {
   title: 'Дала ML — Машиналық оқуды үйрену',
@@ -13,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="kk">
-      <body className="bg-dala-bg text-dala-text min-h-screen">
+      <body className={`${inter.variable} font-sans bg-dala-bg text-dala-text min-h-screen`}>
         {children}
       </body>
     </html>
