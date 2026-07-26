@@ -1,3 +1,11 @@
 {
-  "outputDirectory": "dist"
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "nextjs",
+  "rewrites": [
+    { "source": "/kurs", "destination": "/kurs/index.html" },
+    { "source": "/sozdik", "destination": "/sozdik/index.html" },
+    { "source": "/dev/ui", "destination": "/dev/ui/index.html" }
+  ]
 }
