@@ -1,88 +1,104 @@
 'use client'
 
-import { LessonShell, Metaphor, Intuition, Formal } from '@/components/lesson/LessonShell'
-import { Quiz } from '@/components/lesson/Quiz'
+import { LessonPage } from '@/components/lesson/LessonPage'
+import { Formal, Formula, Intuition, Metaphor, Note } from '@/components/lesson/LessonShell'
 import { FeaturePrimeta } from '@/components/interactive/FeaturePrimeta'
-import { useProgress } from '@/lib/progress'
+import type { QuizQuestion } from '@/components/lesson/Quiz'
 
-const frontmatter = {
-  module: 2,
-  lesson: 1,
-  slug: 'module-2-lesson-1',
-  title: 'Заңдылықты іздеу',
-  titleRu: 'Поиск закономерности',
-  minutes: 12,
-  concepts: ['pattern', 'prediction'],
-  terms: ['заңдылық', 'болжам'],
-}
-
-const quizQuestions = [
+const questions: QuizQuestion[] = [
   {
     id: 'q1',
-    question: 'Заңдылық деген не?',
+    question: 'Заңдылық пен кездейсоқтықтың айырмасы неде?',
     options: [
-      { id: 'a', text: 'Қайталанатын байланыс', explanation: 'Дұрыс! Заңдылық — бұл деректердегі қайталанатын байланыс' },
-      { id: 'b', text: 'Кездейсоқ оқиға', explanation: 'Заңдылық кездейсоқ емес' },
-      { id: 'c', text: 'Тек сандар', explanation: 'Заңдылық тек сандардан тұрмайды' },
+      { id: 'a', text: 'Заңдылық қайталанады, кездейсоқтық қайталанбайды', explanation: 'Дұрыс. Заңдылық жаңа деректе де көрінеді, ал кездейсоқтық — бір реттік сәйкестік.' },
+      { id: 'b', text: 'Заңдылық — сан, кездейсоқтық — сөз', explanation: 'Жоқ: екеуі де сандармен де, сөзбен де көрінуі мүмкін.' },
+      { id: 'c', text: 'Айырмасы жоқ', explanation: 'Айырмасы бар және ол шешуші: осы айырмаға бүкіл машиналық оқу сүйенеді.' },
     ],
     correctId: 'a',
   },
   {
     id: 'q2',
-    question: 'Болжам деген не?',
+    question: 'Ата-бабамыз белгімен ауа райын болжаған. Бұл машиналық оқуға неге ұқсас?',
     options: [
-      { id: 'a', text: 'Болашақты болжау', explanation: 'Дұрыс! Болжам — бұл болашақты болжау' },
-      { id: 'b', text: 'Өткенді талдау', explanation: 'Бұл ретроспектива' },
-      { id: 'c', text: 'Деректерді жинау', explanation: 'Бұл жинау процесі' },
+      { id: 'a', text: 'Екеуі де болашақты дәл біледі', explanation: 'Жоқ: екеуі де болжайды, дәл білмейді. Ықтималдық қана бар.' },
+      { id: 'b', text: 'Екеуі де өткен бақылаудан заңдылық шығарады', explanation: 'Дұрыс. Айырмасы тек көлемде: адам ондаған жағдайды есінде ұстайды, модель — миллиондаған.' },
+      { id: 'c', text: 'Екеуі де компьютерді қажет етеді', explanation: 'Шопан компьютерсіз-ақ болжаған. Компьютер тек көлемді ұлғайтады.' },
     ],
-    correctId: 'a',
+    correctId: 'b',
+  },
+  {
+    id: 'q3',
+    question: 'Модель деген не?',
+    options: [
+      { id: 'a', text: 'Деректер жиналған кесте', explanation: 'Жоқ: кесте — дерек, ал модель — сол деректен шыққан ереже.' },
+      { id: 'b', text: 'Кірістен шығысты есептейтін ереже', explanation: 'Дұрыс. Модель — белгілерден жауап шығаратын ереже.' },
+      { id: 'c', text: 'Жауаптардың тізімі', explanation: 'Тізім жаттау болар еді. Модельдің мәні — тізімде жоқ жағдайға да жауап беру.' },
+    ],
+    correctId: 'b',
+  },
+  {
+    id: 'q4',
+    question: 'Бір ай бойы құс ұшқан сайын жаңбыр жауды. Бұл заңдылық па?',
+    options: [
+      { id: 'a', text: 'Иә, дерек көрсетіп тұр', explanation: 'Асығыс: бір айлық сәйкестік әлі себеп емес. Оны жаңа деректе тексеру керек.' },
+      { id: 'b', text: 'Тексерусіз айту қиын', explanation: 'Дұрыс. Сәйкестік — гипотеза ғана. Ол келесі айда да қайталанса, енді ғана заңдылық туралы сөйлесуге болады.' },
+      { id: 'c', text: 'Жоқ, белгілердің бәрі ырым', explanation: 'Бұл да асығыс: белгілердің бір бөлігі шынымен жұмыс істейді. Мәселе — қайсысы.' },
+    ],
+    correctId: 'b',
   },
 ]
 
-export default function LessonPage() {
-  const { complete } = useProgress()
-
-  const handleQuizComplete = (score: number, answers: Record<string, string>) => {
-    complete(frontmatter.slug, score, answers)
-  }
-
+export default function Page() {
   return (
-    <LessonShell
-      frontmatter={frontmatter}
-      prevLesson={{ slug: 'module-1-lesson-3', title: 'Модуль 1 аяқталды' }}
-      nextLesson={{ slug: 'module-2-lesson-2', title: 'Сызықтық регрессия' }}
-      widget={<FeaturePrimeta />}
-      quiz={<Quiz questions={quizQuestions} onComplete={handleQuizComplete} />}
-    >
+    <LessonPage slug="module-2-lesson-1" questions={questions} widget={<FeaturePrimeta />}>
       <Metaphor>
-        <p className="mb-4">
-          Ата-бабаларымыз ауа-райын болжау үшін бұлттарға, желге, малдың
-          мінез-құлқына қарады. Бұл — <strong>приметалар</strong>.
+        <p>
+          Ата-бабамыз ауа райын болжау үшін аспанға, желге, малдың мінезіне қараған. Қой қораға
+          ерте кірсе — боран болады. Осындай бақылауды <strong>белгі</strong> дейміз.
         </p>
         <p>
-          Қандай приметаларды қолданса, болжам дәлірек болады.
+          Белгі бір күнде пайда болмайды. Ол жүздеген қыстың есінде қалуынан туады: осы белгі
+          көрінген сайын мынау болды. Дәл осылай модель де үйренеді.
         </p>
       </Metaphor>
 
       <Intuition>
-        <p className="mb-4">
-          Деректерде заңдылықтар бар. Мысалы: қысқа түсе, температура төмендейді.
-          Бұл заңдылықты үйреніп, болашақты болжай аламыз.
+        <p>
+          <strong>Заңдылық</strong> — қайталанатын байланыс. Оның басты белгісі — жаңа жағдайда да
+          сақталуы. Бір рет сәйкес келген нәрсе әлі заңдылық емес: ол кездейсоқтық болуы әбден
+          мүмкін.
         </p>
         <p>
-          Модель — бұл заңдылықты үйренетін бағдарлама.
+          <strong>Модель</strong> — сол заңдылықтың жазылған түрі: кіріске (белгіге) қарап шығысты
+          (жауапты) беретін ереже. Ал <strong>болжам</strong> — модельдің нақты жағдайға берген
+          жауабы.
         </p>
+        <Note>
+          Модельдің мәні — кестеде жоқ жағдайға жауап бере алуында. Тек жаттап алса, ол кітапшаның
+          көшірмесі ғана болар еді.
+        </Note>
       </Intuition>
 
-      <Formal term="Заңдылық (Pattern)">
-        <p className="mb-4">
-          Заңдылық — бұл деректердегі қайталанатын байланыс немесе құрылым.
-          Модельдер осы заңдылықты үйреніп, жаңа деректер бойынша болжам жасайды.
+      <Formal term="Заңдылық (pattern), модель (model), болжам (prediction)">
+        <p>
+          Формальды түрде модель — кірістерді шығысқа айналдыратын функция. Ол ешқашан дәл болмайды:
+          әрқашан қателік қалады.
         </p>
-        <code className="block p-3 bg-dala-surface rounded text-sm font-mono">
-          егер бұлт = көп → жаңбыр = иә
-        </code>
+        <Formula note="f — модель, x — белгілер, ŷ — болжам, y — шындық. Модельдің мақсаты: ŷ мен y айырмасын кішірейту.">
+          ŷ = f(x),  қателік = y − ŷ
+        </Formula>
+        <p>
+          Осы қателікті қалай өлшейтінін және оны қалай азайтатынын келесі сабақтарда көреміз. Әзірге
+          бастысын есте ұста: модель дәлдікті емес, қателіктің кішілігін көздейді.
+        </p>
       </Formal>
-    </LessonShell>
+
+      <Intuition>
+        <p>
+          Интерактивте әр белгіні қосып-алып көр. Кейбірі дәлдікті бірден көтереді, ал «құс ұшуы»
+          ештеңе бермейді — ол ырым болып шықты. Осы айырманы табу — деректанушының негізгі жұмысы.
+        </p>
+      </Intuition>
+    </LessonPage>
   )
 }

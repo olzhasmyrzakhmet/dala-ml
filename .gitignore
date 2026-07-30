@@ -1,5 +1,15 @@
 node_modules/
 .next/
 dist/
+out/
 .env
 .env.local
+
+# TypeScript и инструменты
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/

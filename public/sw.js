@@ -1,72 +1,104 @@
-const CACHE_NAME = 'dala-ml-v1'
-const STATIC_ASSETS = [
-  '/',
-  '/kurs',
-  '/sozdik',
-  '/dev/ui',
-  '/dev/widgets',
-  '/manifest.webmanifest',
-]
+/**
+ * Service worker «Дала ML».
+ *
+ * Задача одна и понятная: школьник открыл модуль, метро/аул потеряли сеть,
+ * страница перезагрузилась — урок и интерактив по-прежнему работают.
+ *
+ * Стратегия:
+ *  · навигации — сначала сеть, при отказе кэш, затем /offline;
+ *  · статика Next (/_next/static/…) — cache-first, эти файлы неизменяемы;
+ *  · остальное — stale-while-revalidate.
+ */
 
-// Install event - cache static assets
+const CACHE = 'dala-ml-v2'
+
+const SHELL = ['/', '/kurs', '/sozdik', '/offline', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png']
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS)
-    })
+    caches
+      .open(CACHE)
+      // Один недоступный адрес не должен валить всю установку.
+      .then((cache) => Promise.allSettled(SHELL.map((url) => cache.add(url))))
+      .then(() => self.skipWaiting())
   )
-  self.skipWaiting()
 })
 
-// Activate event - clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      )
-    })
+    caches
+      .keys()
+      .then((names) => Promise.all(names.filter((n) => n !== CACHE).map((n) => caches.delete(n))))
+      .then(() => self.clients.claim())
   )
-  self.clients.claim()
 })
 
-// Fetch event - serve from cache or network
-self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') return
+function isStatic(url) {
+  return url.pathname.startsWith('/_next/static/') || /\.(?:woff2?|png|svg|ico|webmanifest)$/.test(url.pathname)
+}
 
-  // Skip chrome-extension and other non-http requests
-  if (!event.request.url.startsWith('http')) return
+self.addEventListener('fetch', (event) => {
+  const req = event.request
+  if (req.method !== 'GET') return
+
+  const url = new URL(req.url)
+  if (url.origin !== self.location.origin) return
+
+  // Навигация: свежая страница важнее, но офлайн важнее ошибки.
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone()
+          caches.open(CACHE).then((c) => c.put(req, copy))
+          return res
+        })
+        .catch(async () => (await caches.match(req)) || (await caches.match('/offline')) || Response.error())
+    )
+    return
+  }
+
+  if (isStatic(url)) {
+    event.respondWith(
+      caches.match(req).then(
+        (hit) =>
+          hit ||
+          fetch(req).then((res) => {
+            const copy = res.clone()
+            caches.open(CACHE).then((c) => c.put(req, copy))
+            return res
+          })
+      )
+    )
+    return
+  }
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      // Return cached version or fetch from network
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          // Update cache with fresh response
-          if (networkResponse.ok) {
-            const clone = networkResponse.clone()
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, clone)
-            })
+    caches.match(req).then((hit) => {
+      const network = fetch(req)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone()
+            caches.open(CACHE).then((c) => c.put(req, copy))
           }
-          return networkResponse
+          return res
         })
-        .catch(() => {
-          // Network failed, return cached or offline page
-          return cached || caches.match('/offline')
-        })
-
-      return cached || fetchPromise
+        .catch(() => hit)
+      return hit || network
     })
   )
 })
 
-// Message event - handle module download requests
+// Страница просит положить модуль в офлайн.
 self.addEventListener('message', (event) => {
-  if (event.data === 'skipWaiting') {
+  const data = event.data
+  if (data === 'skipWaiting') {
     self.skipWaiting()
+    return
+  }
+  if (data && data.type === 'cache-urls' && Array.isArray(data.urls)) {
+    event.waitUntil(
+      caches.open(CACHE).then((cache) => Promise.allSettled(data.urls.map((u) => cache.add(u))))
+    )
   }
 })

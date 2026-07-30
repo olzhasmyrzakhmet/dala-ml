@@ -1,88 +1,126 @@
 'use client'
 
-import { LessonShell, Metaphor, Intuition, Formal } from '@/components/lesson/LessonShell'
-import { Quiz } from '@/components/lesson/Quiz'
-import { TangbaClassify } from '@/components/interactive/TangbaClassify'
-import { useProgress } from '@/lib/progress'
+import { LessonPage } from '@/components/lesson/LessonPage'
+import { Code, Formal, Formula, Intuition, Metaphor, Note } from '@/components/lesson/LessonShell'
+import { DalaZheliNoise } from '@/components/interactive/DalaZheliNoise'
+import type { QuizQuestion } from '@/components/lesson/Quiz'
 
-const frontmatter = {
-  module: 2,
-  lesson: 2,
-  slug: 'module-2-lesson-2',
-  title: 'Сызықтық регрессия',
-  titleRu: 'Линейная регрессия',
-  minutes: 12,
-  concepts: ['linear_regression', 'slope', 'intercept'],
-  terms: ['сызықтық регрессия', 'бұрыш', 'кесінді'],
-}
-
-const quizQuestions = [
+const questions: QuizQuestion[] = [
   {
     id: 'q1',
-    question: 'Сызықтық регрессия не істейді?',
+    question: 'y = w·x + b теңдеуіндегі w нені білдіреді?',
     options: [
-      { id: 'a', text: 'Түзу сызық сызады', explanation: 'Дұрыс! Екі нүктені қосатын ең жақсы түзу' },
-      { id: 'b', text: 'Санаттарға бөледі', explanation: 'Бұл классификация' },
-      { id: 'c', text: 'Шуды кетіреді', explanation: 'Бұл тазалау' },
+      { id: 'a', text: 'Түзудің еңісін', explanation: 'Дұрыс. w — еңіс: x бірге өскенде y қаншаға өзгеретінін көрсетеді.' },
+      { id: 'b', text: 'Түзудің басталу биіктігін', explanation: 'Ол — b, кесінді. w одан бөлек.' },
+      { id: 'c', text: 'Қателіктің мөлшерін', explanation: 'Қателік бөлек есептеледі: ол шындық пен болжамның айырмасы.' },
     ],
     correctId: 'a',
   },
   {
     id: 'q2',
-    question: 'Бұрыш не көрсетеді?',
+    question: 'b = 0 болса, түзу қайдан өтеді?',
     options: [
-      { id: 'a', text: 'Жолдың басталуын', explanation: 'Бұл кесінді' },
-      { id: 'b', text: 'Жолдың көтерілуін', explanation: 'Дұрыс! Қандай қарқынмен өседі' },
-      { id: 'c', text: 'Жолдың ұзындығын', explanation: 'Бұл қателік' },
+      { id: 'a', text: 'Координат басынан', explanation: 'Дұрыс. x = 0 болғанда y = 0, яғни түзу дәл ортадан өтеді.' },
+      { id: 'b', text: 'Ең жоғарғы нүктеден', explanation: 'Жоқ: b — тік бағыттағы ығысу, ол нөл болса ығысу жоқ.' },
+      { id: 'c', text: 'Түзу мүлде болмайды', explanation: 'Түзу қалады, тек координат басынан өтеді.' },
+    ],
+    correctId: 'a',
+  },
+  {
+    id: 'q3',
+    question: 'Еңіс теріс болса, бұл нені білдіреді?',
+    options: [
+      { id: 'a', text: 'Модель қате', explanation: 'Жоқ: теріс еңіс — қалыпты жағдай, ол кері байланысты көрсетеді.' },
+      { id: 'b', text: 'x өскенде y кемиді', explanation: 'Дұрыс. Мысалы: қой жасы өскен сайын жүн салмағы азаяды.' },
+      { id: 'c', text: 'Деректе қателік бар', explanation: 'Еңістің таңбасы дерек сапасы туралы ештеңе айтпайды.' },
+    ],
+    correctId: 'b',
+  },
+  {
+    id: 'q4',
+    question: 'Неге бір нүкте арқылы шексіз көп түзу өтеді, ал екі нүкте арқылы біреуі ғана?',
+    options: [
+      { id: 'a', text: 'Түзуде екі белгісіз бар: w және b', explanation: 'Дұрыс. Екі белгісізді табу үшін кемінде екі теңдеу керек, яғни екі нүкте.' },
+      { id: 'b', text: 'Себебі геометрия солай', explanation: 'Дұрыс жауапқа жақын, бірақ себебі нақтырақ: белгісіздер саны теңдеулер санына тең болуы керек.' },
+      { id: 'c', text: 'Бір нүкте жеткіліксіз дерек', explanation: 'Бұл салдары, себебі емес. Себебі — екі параметрді бір теңдеумен таба алмайсың.' },
+    ],
+    correctId: 'a',
+  },
+  {
+    id: 'q5',
+    question: 'Нүктелер дәл бір түзуде жатпаса не істейміз?',
+    options: [
+      { id: 'a', text: 'Барлық нүктеден өтетін қисық сызамыз', explanation: 'Қауіпті жол: ол шуды жаттап алуға әкеледі. Бесінші модульде мұны толық көресің.' },
+      { id: 'b', text: 'Қателігі ең кіші түзуді іздейміз', explanation: 'Дұрыс. Дәл өтетін түзу жоқ, сондықтан ең жақсысын іздейміз — келесі сабақтың тақырыбы.' },
+      { id: 'c', text: 'Артық нүктелерді өшіреміз', explanation: 'Деректі ыңғайлы болсын деп өшіру — өзін алдау. Шу деректің табиғи бөлігі.' },
     ],
     correctId: 'b',
   },
 ]
 
-export default function LessonPage() {
-  const { complete } = useProgress()
-
-  const handleQuizComplete = (score: number, answers: Record<string, string>) => {
-    complete(frontmatter.slug, score, answers)
-  }
-
+export default function Page() {
   return (
-    <LessonShell
-      frontmatter={frontmatter}
-      prevLesson={{ slug: 'module-2-lesson-1', title: 'Заңдылықты іздеу' }}
-      nextLesson={{ slug: 'module-2-lesson-3', title: 'Ең кіші квадраттар' }}
-      widget={<TangbaClassify />}
-      quiz={<Quiz questions={quizQuestions} onComplete={handleQuizComplete} />}
-    >
+    <LessonPage slug="module-2-lesson-2" questions={questions} widget={<DalaZheliNoise />}>
       <Metaphor>
-        <p className="mb-4">
-          Степте екі нүкте arasýнда ең қысқа жол — <strong>түзу сызық</strong>.
-          Сызықтық регрессия дәл солай: екі нүктені қосатын түзу табу.
+        <p>
+          Далада екі ауыл арасында жол салады. Ең қысқа жол — түзу. Оны сипаттау үшін екі-ақ нәрсе
+          жеткілікті: жол қайдан басталады және қандай қиғаштықпен көтеріледі.
         </p>
         <p>
-          Бұрыш = жолдың көтерілуі. Кесінді = жолдың басталуы.
+          Сызықтық регрессия дәл осымен айналысады: шашылған нүктелер арасынан ең қолайлы түзуді
+          өткізеді.
         </p>
       </Metaphor>
 
       <Intuition>
-        <p className="mb-4">
-          Көз алдыңда нүктелер шашырап тұр. Қай түзу оларды ең жақсын анықтайды?
-          Сол түзуді табу керек.
+        <p>
+          Түзуді екі сан толық анықтайды. Біріншісі — <strong>еңіс</strong>: x бірге өскенде y
+          қаншаға өзгереді. Екіншісі — <strong>кесінді</strong>: x нөлге тең болғандағы y мәні,
+          яғни жолдың басталу биіктігі.
         </p>
         <p>
-          Бұрыш үлкен болса — өсу қарқынды. Кесінді = y = mx + b формуласындағы b.
+          Еңіс оң болса, байланыс тура: бірі өссе, екіншісі де өседі. Теріс болса — кері: салмақ
+          өссе, жүгіру жылдамдығы кемиді. Ал нөлге жақын болса, байланыс жоқ деген сөз.
         </p>
+        <Note>
+          Модельді үйрету дегеніміз — осы екі санды табу. Басқа ештеңе емес.
+        </Note>
       </Intuition>
 
-      <Formal term="Сызықтық регрессия (Linear Regression)">
-        <p className="mb-4">
-          Модель: y = mx + b, мұнда m — бұрыш (slope), b — кесінді (intercept).
+      <Formal term="Сызықтық регрессия (linear regression)">
+        <p>
+          Бір ерекшелік болғанда модель мына түрде жазылады:
         </p>
-        <code className="block p-3 bg-dala-surface rounded text-sm font-mono">
-          y = 2x + 5{'\n'}
-          # Егер x = 3 → y = 2·3 + 5 = 11
-        </code>
+        <Formula note="w — еңіс (салмақ), b — кесінді (ығысу). Модельді үйрету — осы екеуін табу.">
+          ŷ = w · x + b
+        </Formula>
+        <p>
+          Ерекшелік көп болса, әрқайсысының өз салмағы болады. Мысалы, қойдың бағасын жасы мен
+          салмағынан болжасақ:
+        </p>
+        <Formula note="Әр салмақ өз ерекшелігінің қаншалық маңызды екенін көрсетеді.">
+          ŷ = w₁ · жасы + w₂ · салмағы + b
+        </Formula>
+        <p>
+          Екі белгісізді табу үшін кемінде екі нүкте керек. Бірақ нағыз деректе нүкте жүздеп болады
+          және олар бір түзуде жатпайды — сондықтан «дәл өтетін» емес, «ең жақсы» түзуді іздейміз.
+        </p>
       </Formal>
-    </LessonShell>
+
+      <Code>{`# Бір ерекшелікті модель
+def болжау(x, w, b):
+    return w * x + b
+
+# Мысал: еңіс 0.85, кесінді -0.05
+болжау(x=2.0, w=0.85, b=-0.05)   # 1.65`}</Code>
+
+      <Intuition>
+        <p>
+          Төмендегі интерактивте үзік сызық — шындықтағы заңдылық, тұтас сызық — модель тапқаны.
+          Желді күшейтсең, екеуі алшақтайды. Дерек санын арттырсаң — қайта жақындайды. «Табылған
+          еңіс» санын бақыла: ол дәл сол w.
+        </p>
+      </Intuition>
+    </LessonPage>
   )
 }

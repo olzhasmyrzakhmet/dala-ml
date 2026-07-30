@@ -1,103 +1,137 @@
 'use client'
 
 import Link from 'next/link'
-import { ReactNode } from 'react'
-import { LessonFrontmatter } from '@/lib/content'
+import { useEffect, useState, type ReactNode } from 'react'
+import { getAdjacentLessons, lessonHref, type LessonFrontmatter } from '@/lib/content'
 import { useProgress } from '@/lib/progress'
+import { IconArrowLeft, IconArrowRight, IconCheck } from '@/components/ui/icons'
 
 interface LessonShellProps {
   frontmatter: LessonFrontmatter
-  prevLesson: { slug: string; title: string } | null
-  nextLesson: { slug: string; title: string } | null
   children: ReactNode
   widget?: ReactNode
   quiz?: ReactNode
 }
 
-export function LessonShell({
-  frontmatter,
-  prevLesson,
-  nextLesson,
-  children,
-  widget,
-  quiz,
-}: LessonShellProps) {
-  const { getProgressFor } = useProgress()
-  const progress = getProgressFor(frontmatter.slug)
+export function LessonShell({ frontmatter, children, widget, quiz }: LessonShellProps) {
+  const { getProgressFor, visit } = useProgress()
+  const done = getProgressFor(frontmatter.slug)?.done ?? false
+  const { prev, next } = getAdjacentLessons(frontmatter.slug)
+  const [read, setRead] = useState(0)
+
+  // Отметка «урок открыт» — именно она питает карточку «Жалғастыру».
+  useEffect(() => {
+    visit(frontmatter.slug)
+  }, [visit, frontmatter.slug])
+
+  // Полоса вверху показывает, сколько урока прочитано.
+  useEffect(() => {
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      setRead(max > 0 ? Math.min(1, window.scrollY / max) : 1)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   return (
-    <div className="min-h-screen">
-      {/* Progress bar */}
-      <div className="sticky top-0 z-50 bg-dala-bg border-b border-dala-gold/20">
-        <div className="max-w-3xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-dala-muted">
-              Модуль {frontmatter.module} · Сабақ {frontmatter.lesson}
+    <div className="min-h-dvh pb-10">
+      <header className="sticky top-0 z-40 border-b border-dala-gold/15 bg-dala-bg/95 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-2.5">
+          <Link
+            href="/kurs"
+            className="-ml-2 flex h-11 w-11 items-center justify-center rounded-lg text-dala-muted transition-colors hover:text-dala-text"
+            aria-label="Курс картасына оралу"
+          >
+            <IconArrowLeft size={20} />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs text-dala-muted">
+              {frontmatter.module}-модуль · {frontmatter.lesson}-сабақ · {frontmatter.minutes} мин
+            </p>
+          </div>
+          {done && (
+            <span className="flex items-center gap-1 rounded-full border border-dala-water/40 bg-dala-water/10 px-2.5 py-1 text-xs font-medium text-dala-water">
+              <IconCheck size={13} />
+              Өтілді
             </span>
-            <span className="text-sm text-dala-muted">{frontmatter.minutes} мин</span>
-          </div>
-          <div className="h-1 bg-dala-surface rounded-full">
-            <div
-              className="h-full bg-dala-water rounded-full transition-all"
-              style={{ width: progress?.done ? '100%' : '0%' }}
-            />
-          </div>
+          )}
         </div>
-      </div>
+        <div className="h-0.5 bg-dala-surface">
+          <div className="h-full bg-dala-water transition-[width] duration-150" style={{ width: `${read * 100}%` }} />
+        </div>
+      </header>
 
-      {/* Main content */}
-      <main className="max-w-3xl mx-auto px-4 py-8">
-        {/* Title */}
-        <h1 className="text-2xl font-bold text-dala-gold mb-2">{frontmatter.title}</h1>
-        {frontmatter.titleRu && (
-          <p className="text-dala-muted text-sm mb-6">{frontmatter.titleRu}</p>
+      <main className="mx-auto max-w-3xl px-4 pt-7">
+        <h1 className="text-[26px] font-bold leading-tight text-dala-gold">{frontmatter.title}</h1>
+
+        {frontmatter.terms.length > 0 && (
+          <ul className="mt-3 flex flex-wrap gap-1.5">
+            {frontmatter.terms.map((t) => (
+              <li
+                key={t}
+                className="rounded border border-dala-gold/20 bg-dala-surface px-2 py-0.5 text-xs text-dala-muted"
+              >
+                {t}
+              </li>
+            ))}
+          </ul>
         )}
 
-        {/* Content sections */}
-        <div className="space-y-8">
-          {children}
-        </div>
+        <div className="dala-ornament mt-5" />
 
-        {/* Widget section */}
+        <div className="mt-7 space-y-9">{children}</div>
+
         {widget && (
-          <section className="mt-12">
-            <h2 className="text-xl font-semibold text-dala-text mb-4">Интерактив</h2>
+          <section className="mt-11">
+            <SectionTitle kicker="Интерактив">Қолмен тексер</SectionTitle>
             {widget}
           </section>
         )}
 
-        {/* Quiz section */}
         {quiz && (
-          <section className="mt-12">
-            <h2 className="text-xl font-semibold text-dala-text mb-4">Тексеру</h2>
+          <section className="mt-11">
+            <SectionTitle kicker="Тексеру">Түсінгеніңді тексер</SectionTitle>
             {quiz}
           </section>
         )}
 
-        {/* Navigation */}
-        <nav className="mt-12 flex gap-4">
-          {prevLesson ? (
+        <nav className="mt-12 grid gap-3 sm:grid-cols-2">
+          {prev ? (
             <Link
-              href={`/kurs/module-${frontmatter.module}/lesson-${frontmatter.lesson - 1}`}
-              className="flex-1 p-4 bg-dala-surface rounded-xl border border-dala-gold/20 hover:border-dala-gold/40 transition-all"
+              href={lessonHref(prev)}
+              className="group rounded-xl border border-dala-gold/20 bg-dala-surface p-4 transition-colors hover:border-dala-gold/45"
             >
-              <span className="text-xs text-dala-muted">Алдыңғы</span>
-              <p className="text-dala-text font-medium">← {prevLesson.title}</p>
+              <span className="flex items-center gap-1.5 text-xs text-dala-muted">
+                <IconArrowLeft size={13} />
+                Алдыңғы
+              </span>
+              <p className="mt-1 font-medium text-dala-text">{prev.title}</p>
             </Link>
           ) : (
-            <div className="flex-1" />
+            <span className="hidden sm:block" />
           )}
-          
-          {nextLesson ? (
+
+          {next ? (
             <Link
-              href={`/kurs/module-${frontmatter.module}/lesson-${frontmatter.lesson + 1}`}
-              className="flex-1 p-4 bg-dala-surface rounded-xl border border-dala-gold/20 hover:border-dala-gold/40 transition-all text-right"
+              href={lessonHref(next)}
+              className="group rounded-xl border border-dala-water/30 bg-dala-water/5 p-4 text-right transition-colors hover:border-dala-water"
             >
-              <span className="text-xs text-dala-muted">Келесі</span>
-              <p className="text-dala-text font-medium">{nextLesson.title} →</p>
+              <span className="flex items-center justify-end gap-1.5 text-xs text-dala-water">
+                Келесі
+                <IconArrowRight size={13} />
+              </span>
+              <p className="mt-1 font-medium text-dala-text">{next.title}</p>
             </Link>
           ) : (
-            <div className="flex-1" />
+            <Link
+              href="/sertifikat"
+              className="rounded-xl border border-dala-gold/30 bg-dala-gold/5 p-4 text-right transition-colors hover:border-dala-gold"
+            >
+              <span className="text-xs text-dala-gold">Курстың соңы</span>
+              <p className="mt-1 font-medium text-dala-text">Сертификат ал</p>
+            </Link>
           )}
         </nav>
       </main>
@@ -105,12 +139,23 @@ export function LessonShell({
   )
 }
 
-// Section components
+function SectionTitle({ kicker, children }: { kicker: string; children: ReactNode }) {
+  return (
+    <div className="mb-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-dala-water/80">{kicker}</p>
+      <h2 className="text-xl font-semibold text-dala-text">{children}</h2>
+    </div>
+  )
+}
+
+/* ------------------------- Секции урока ------------------------- */
+
 export function Metaphor({ children }: { children: ReactNode }) {
   return (
-    <section className="p-6 bg-dala-surface rounded-xl border border-dala-water/30">
-      <h3 className="text-lg font-semibold text-dala-water mb-3">Метафора</h3>
-      <div className="text-dala-text">{children}</div>
+    <section className="relative overflow-hidden rounded-xl border border-dala-water/25 bg-dala-surface p-5">
+      <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-dala-water/60" />
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-dala-water">Метафора</h3>
+      <div className="space-y-3 text-dala-text">{children}</div>
     </section>
   )
 }
@@ -118,30 +163,50 @@ export function Metaphor({ children }: { children: ReactNode }) {
 export function Intuition({ children }: { children: ReactNode }) {
   return (
     <section>
-      <h3 className="text-lg font-semibold text-dala-text mb-3">Интуиция</h3>
-      <div className="text-dala-text leading-relaxed">{children}</div>
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-dala-muted">Түйсік</h3>
+      <div className="space-y-3 leading-relaxed text-dala-text">{children}</div>
     </section>
   )
 }
 
 export function Formal({ children, term }: { children: ReactNode; term?: string }) {
   return (
-    <section className="p-6 bg-dala-bg rounded-xl border border-dala-gold/20">
-      <h3 className="text-lg font-semibold text-dala-gold mb-3">
-        {term && <span className="text-dala-water">{term}</span>}
-      </h3>
-      <div className="text-dala-text">{children}</div>
+    <section className="rounded-xl border border-dala-gold/25 bg-dala-surface/60 p-5">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-dala-gold">Ғылыми тілмен</h3>
+      {term && <p className="mt-1 text-lg font-semibold text-dala-text">{term}</p>}
+      <div className="mt-3 space-y-3 text-dala-text">{children}</div>
     </section>
   )
 }
 
-export function Code({ children, language = 'python' }: { children: string; language?: string }) {
+/** Формула отдельной строкой — на телефоне она не должна ломать вёрстку. */
+export function Formula({ children, note }: { children: ReactNode; note?: string }) {
+  return (
+    <figure className="my-4">
+      <div className="overflow-x-auto rounded-lg border border-dala-gold/15 bg-dala-bg px-4 py-3">
+        <code className="whitespace-nowrap font-mono text-[15px] text-dala-text">{children}</code>
+      </div>
+      {note && <figcaption className="mt-2 text-sm text-dala-muted">{note}</figcaption>}
+    </figure>
+  )
+}
+
+export function Code({ children }: { children: string }) {
   return (
     <section>
-      <h3 className="text-lg font-semibold text-dala-text mb-3">Код</h3>
-      <pre className="p-4 bg-dala-bg rounded-xl overflow-x-auto">
-        <code className="text-sm font-mono text-dala-text">{children}</code>
+      <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-dala-muted">Код</h3>
+      <pre className="overflow-x-auto rounded-xl border border-dala-gold/15 bg-dala-bg p-4">
+        <code className="font-mono text-sm leading-relaxed text-dala-text">{children}</code>
       </pre>
     </section>
+  )
+}
+
+/** Короткая врезка «запомни» — разбивает длинный текст. */
+export function Note({ children }: { children: ReactNode }) {
+  return (
+    <aside className="rounded-lg border-l-2 border-dala-gold/60 bg-dala-gold/5 px-4 py-3 text-[15px] text-dala-text">
+      {children}
+    </aside>
   )
 }

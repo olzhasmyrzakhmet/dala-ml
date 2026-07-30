@@ -1,158 +1,221 @@
-import { useState, useEffect, useCallback } from 'react'
+'use client'
 
-const STORAGE_KEY = 'dala:progress:v1'
+import { useCallback, useEffect, useSyncExternalStore } from 'react'
+import { z } from 'zod'
 
-export interface LessonProgress {
-  done: boolean
-  score: number
-  at: string // ISO date
-  answers?: Record<string, string>
+export const STORAGE_KEY = 'dala:progress:v1'
+
+const lessonSchema = z.object({
+  done: z.boolean().default(false),
+  score: z.number().min(0).max(100).default(0),
+  at: z.string().default(''),
+  seenAt: z.string().optional(),
+  answers: z.record(z.string()).optional(),
+})
+
+const progressSchema = z.object({
+  lessons: z.record(lessonSchema).default({}),
+  lastSlug: z.string().nullable().default(null),
+  downloadedModules: z.array(z.number().int()).default([]),
+})
+
+export type LessonProgress = z.infer<typeof lessonSchema>
+export type ProgressData = z.infer<typeof progressSchema>
+
+const EMPTY: ProgressData = { lessons: {}, lastSlug: null, downloadedModules: [] }
+
+/* ------------------------------------------------------------------ */
+/* Маленький стор: без него каждый компонент держал бы свою копию      */
+/* прогресса и «Жалғастыру» на главной не обновлялась бы после урока.  */
+/* ------------------------------------------------------------------ */
+
+let cache: ProgressData = EMPTY
+let hydrated = false
+const listeners = new Set<() => void>()
+
+function emit() {
+  listeners.forEach((l) => l())
 }
 
-export interface ProgressData {
-  lessons: Record<string, LessonProgress>
-  lastSlug: string | null
-  downloadedModules: number[]
-}
-
-const defaultProgress: ProgressData = {
-  lessons: {},
-  lastSlug: null,
-  downloadedModules: [],
-}
-
-// Get progress from localStorage
-export function getProgress(): ProgressData {
-  if (typeof window === 'undefined') return defaultProgress
-  
+function readStorage(): ProgressData {
+  if (typeof window === 'undefined') return EMPTY
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return defaultProgress
-    return { ...defaultProgress, ...JSON.parse(stored) }
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!raw) return EMPTY
+    const parsed = progressSchema.safeParse(JSON.parse(raw))
+    return parsed.success ? parsed.data : EMPTY
   } catch {
-    return defaultProgress
+    return EMPTY
   }
 }
 
-// Save progress to localStorage
-export function saveProgress(data: ProgressData): void {
-  if (typeof window === 'undefined') return
-  
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  } catch (e) {
-    console.error('Failed to save progress:', e)
+function writeStorage(next: ProgressData) {
+  cache = next
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+    } catch {
+      // Приватный режим или переполнение — работаем дальше в памяти.
+    }
   }
+  emit()
 }
 
-// Mark lesson as completed
+function update(fn: (prev: ProgressData) => ProgressData) {
+  if (!hydrated) {
+    cache = readStorage()
+    hydrated = true
+  }
+  writeStorage(fn(cache))
+}
+
+/* ------------------------------- API ------------------------------- */
+
+export function getProgress(): ProgressData {
+  if (!hydrated && typeof window !== 'undefined') {
+    cache = readStorage()
+    hydrated = true
+  }
+  return cache
+}
+
+/** Урок открыт. Именно это питает карточку «Жалғастыру». */
+export function visitLesson(slug: string): void {
+  update((prev) => {
+    const existing = prev.lessons[slug]
+    if (prev.lastSlug === slug && existing?.seenAt) return prev
+    return {
+      ...prev,
+      lastSlug: slug,
+      lessons: {
+        ...prev.lessons,
+        [slug]: {
+          done: existing?.done ?? false,
+          score: existing?.score ?? 0,
+          at: existing?.at ?? '',
+          answers: existing?.answers,
+          seenAt: new Date().toISOString(),
+        },
+      },
+    }
+  })
+}
+
+/** Урок пройден: квиз сдан. */
 export function completeLesson(slug: string, score: number, answers?: Record<string, string>): void {
-  const progress = getProgress()
-  progress.lessons[slug] = {
-    done: true,
-    score,
-    at: new Date().toISOString(),
-    answers,
-  }
-  progress.lastSlug = slug
-  saveProgress(progress)
+  update((prev) => ({
+    ...prev,
+    lastSlug: slug,
+    lessons: {
+      ...prev.lessons,
+      [slug]: {
+        done: true,
+        score: Math.round(Math.max(0, Math.min(100, score))),
+        at: new Date().toISOString(),
+        seenAt: prev.lessons[slug]?.seenAt ?? new Date().toISOString(),
+        answers,
+      },
+    },
+  }))
 }
 
-// Get lesson progress
-export function getLessonProgress(slug: string): LessonProgress | null {
-  const progress = getProgress()
-  return progress.lessons[slug] || null
+export function downloadModule(id: number): void {
+  update((prev) =>
+    prev.downloadedModules.includes(id)
+      ? prev
+      : { ...prev, downloadedModules: [...prev.downloadedModules, id] }
+  )
 }
 
-// Get continue lesson (last incomplete or last completed)
-export function getContinueLesson(): string | null {
-  const progress = getProgress()
-  return progress.lastSlug
+export function forgetModule(id: number): void {
+  update((prev) => ({ ...prev, downloadedModules: prev.downloadedModules.filter((m) => m !== id) }))
 }
 
-// Export progress as JSON file
+export function resetProgress(): void {
+  update(() => EMPTY)
+}
+
 export function exportProgress(): string {
-  const progress = getProgress()
-  return JSON.stringify(progress, null, 2)
+  return JSON.stringify(getProgress(), null, 2)
 }
 
-// Import progress from JSON
+/** Импорт с проверкой схемы: чужой или битый файл не должен ломать приложение. */
 export function importProgress(json: string): boolean {
   try {
-    const data = JSON.parse(json)
-    // Validate structure
-    if (data.lessons && typeof data.lessons === 'object') {
-      saveProgress(data as ProgressData)
-      return true
-    }
-    return false
+    const parsed = progressSchema.safeParse(JSON.parse(json))
+    if (!parsed.success) return false
+    update(() => parsed.data)
+    return true
   } catch {
     return false
   }
 }
 
-// Download module for offline
-export function downloadModule(moduleId: number): void {
-  const progress = getProgress()
-  if (!progress.downloadedModules.includes(moduleId)) {
-    progress.downloadedModules.push(moduleId)
-    saveProgress(progress)
+/* ------------------------------- Хук ------------------------------- */
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
   }
 }
 
-// React hook for progress
 export function useProgress() {
-  const [progress, setProgress] = useState<ProgressData>(defaultProgress)
-  const [isLoaded, setIsLoaded] = useState(false)
+  const progress = useSyncExternalStore(
+    subscribe,
+    () => cache,
+    () => EMPTY
+  )
 
+  // Первое чтение только на клиенте: иначе разъедется серверная разметка.
   useEffect(() => {
-    setProgress(getProgress())
-    setIsLoaded(true)
-  }, [])
-
-  const complete = useCallback((slug: string, score: number, answers?: Record<string, string>) => {
-    completeLesson(slug, score, answers)
-    setProgress(getProgress())
-  }, [])
-
-  const getProgressFor = useCallback((slug: string) => {
-    return progress.lessons[slug] || null
-  }, [progress])
-
-  const getContinue = useCallback(() => {
-    return progress.lastSlug
-  }, [progress])
-
-  const isModuleDownloaded = useCallback((moduleId: number) => {
-    return progress.downloadedModules.includes(moduleId)
-  }, [progress])
-
-  const download = useCallback((moduleId: number) => {
-    downloadModule(moduleId)
-    setProgress(getProgress())
-  }, [])
-
-  const exportData = useCallback(() => {
-    return exportProgress()
-  }, [])
-
-  const importData = useCallback((json: string) => {
-    const success = importProgress(json)
-    if (success) {
-      setProgress(getProgress())
+    if (!hydrated) {
+      cache = readStorage()
+      hydrated = true
+      emit()
     }
-    return success
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY) {
+        cache = readStorage()
+        emit()
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
   }, [])
+
+  const getProgressFor = useCallback((slug: string) => progress.lessons[slug] ?? null, [progress])
+  const isDone = useCallback((slug: string) => progress.lessons[slug]?.done === true, [progress])
+  const isModuleDownloaded = useCallback(
+    (id: number) => progress.downloadedModules.includes(id),
+    [progress]
+  )
+
+  const doneCount = Object.values(progress.lessons).filter((l) => l.done).length
+  const scores = Object.values(progress.lessons).filter((l) => l.done).map((l) => l.score)
+  const averageScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0
 
   return {
     progress,
-    isLoaded,
-    complete,
+    doneCount,
+    averageScore,
+    lastSlug: progress.lastSlug,
     getProgressFor,
-    getContinue,
+    isDone,
     isModuleDownloaded,
-    download,
-    exportData,
-    importData,
+    complete: completeLesson,
+    visit: visitLesson,
+    download: downloadModule,
+    forget: forgetModule,
+    reset: resetProgress,
+    exportJson: exportProgress,
+    importJson: importProgress,
   }
+}
+
+/** Для тестов: сбрасывает и стор, и localStorage. */
+export function __resetStoreForTests() {
+  cache = EMPTY
+  hydrated = false
+  listeners.clear()
 }

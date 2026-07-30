@@ -1,90 +1,123 @@
 'use client'
 
-import { LessonShell, Metaphor, Intuition, Formal } from '@/components/lesson/LessonShell'
-import { Quiz } from '@/components/lesson/Quiz'
-import { DalaZheliNoise } from '@/components/interactive/DalaZheliNoise'
-import { useProgress } from '@/lib/progress'
+import { LessonPage } from '@/components/lesson/LessonPage'
+import { Code, Formal, Formula, Intuition, Metaphor, Note } from '@/components/lesson/LessonShell'
+import { FeaturePrimeta } from '@/components/interactive/FeaturePrimeta'
+import type { QuizQuestion } from '@/components/lesson/Quiz'
 
-const frontmatter = {
-  module: 1,
-  lesson: 2,
-  slug: 'module-1-lesson-2',
-  title: 'Мәліметтер түрлері',
-  titleRu: 'Типы данных',
-  minutes: 10,
-  concepts: ['numerical', 'categorical'],
-  terms: ['сандық', 'саптық'],
-}
-
-const quizQuestions = [
+const questions: QuizQuestion[] = [
   {
     id: 'q1',
-    question: 'Салмақ қай типке жатады?',
+    question: '«Түсі: қоңыр» — қандай мәлімет?',
     options: [
-      { id: 'a', text: 'Сандық', explanation: 'Дұрыс! Салмақ санмен өлшенеді (45 кг, 50 кг)' },
-      { id: 'b', text: 'Саптық', explanation: 'Саптық — санаттар (түстер, атаулар)' },
-      { id: 'c', text: 'Екеуі де', explanation: 'Жоқ, салмақ тек сандық' },
+      { id: 'a', text: 'Сандық', explanation: 'Жоқ: қоңырды өлшеуге де, қосуға да болмайды.' },
+      { id: 'b', text: 'Саптық', explanation: 'Дұрыс. Түс — санат, ол сандық шкалада тұрмайды.' },
+      { id: 'c', text: 'Мұндама', explanation: 'Мұндама — болжанатын жауап. Мұнда түс жай ғана ерекшелік.' },
+    ],
+    correctId: 'b',
+  },
+  {
+    id: 'q2',
+    question: 'Неге түстерге 1, 2, 3 деп нөмір беріп қоя салуға болмайды?',
+    options: [
+      { id: 'a', text: 'Модель «қоңыр > ақ» деп ойлап қалады', explanation: 'Дұрыс. Сан реті жалған мағына қосады: модель үшін қоңыр ақтан үлкен болып шығады.' },
+      { id: 'b', text: 'Компьютер әріпті түсінбейді', explanation: 'Мәселе әріпте емес: сан беру арқылы шындықта жоқ реттілік пайда болады.' },
+      { id: 'c', text: 'Сан жады көп алады', explanation: 'Жоқ: сан әріптен аз орын алады. Мәселе жадта емес, мағынада.' },
     ],
     correctId: 'a',
   },
   {
-    id: 'q2',
-    question: 'Түс қай типке жатады?',
+    id: 'q3',
+    question: 'Қой саны: 12, 15, 19. Бұл сандық мәліметтің қай түрі?',
     options: [
-      { id: 'a', text: 'Сандық', explanation: 'Түс санмен өлшенбейді' },
-      { id: 'b', text: 'Саптық', explanation: 'Дұрыс! Түс — санат: ақ, қара, қызыл' },
-      { id: 'c', text: 'Екеуі де', explanation: 'Жоқ, түс тек саптық' },
+      { id: 'a', text: 'Дискретті', explanation: 'Дұрыс. Қойды бөлшектеп санамайсың: тек бүтін сан болады.' },
+      { id: 'b', text: 'Үзіліссіз', explanation: 'Үзіліссізге салмақ пен температура жатады: олар 45.3 бола алады.' },
+      { id: 'c', text: 'Саптық', explanation: 'Жоқ: бұл нағыз сан, оны қосуға да, орташалауға да болады.' },
+    ],
+    correctId: 'a',
+  },
+  {
+    id: 'q4',
+    question: 'Реттік саптық мәліметке қайсысы мысал бола алады?',
+    options: [
+      { id: 'a', text: 'Қала атауы', explanation: 'Жоқ: қалалардың табиғи реті жоқ.' },
+      { id: 'b', text: 'Қойдың күйі: нашар → орташа → жақсы', explanation: 'Дұрыс. Санат, бірақ реті бар — сондықтан реттік деп аталады.' },
+      { id: 'c', text: 'Салмағы килограммен', explanation: 'Бұл сандық мәлімет, саптық емес.' },
+    ],
+    correctId: 'b',
+  },
+  {
+    id: 'q5',
+    question: 'Бір ыстық кодтау (one-hot) не үшін керек?',
+    options: [
+      { id: 'a', text: 'Кестені кішірейту үшін', explanation: 'Керісінше: бағандар саны көбейеді.' },
+      { id: 'b', text: 'Санаттарды тең құқылы ету үшін', explanation: 'Дұрыс. Әр санатқа жеке баған беріледі, сондықтан бірі екіншісінен «үлкен» болмайды.' },
+      { id: 'c', text: 'Жоқ мәндерді толтыру үшін', explanation: 'Ол — келесі сабақтың тақырыбы, тазалау.' },
     ],
     correctId: 'b',
   },
 ]
 
-export default function LessonPage() {
-  const { complete } = useProgress()
-
-  const handleQuizComplete = (score: number, answers: Record<string, string>) => {
-    complete(frontmatter.slug, score, answers)
-  }
-
+export default function Page() {
   return (
-    <LessonShell
-      frontmatter={frontmatter}
-      prevLesson={{ slug: 'module-1-lesson-1', title: 'Мәліметтер деген не?' }}
-      nextLesson={{ slug: 'module-1-lesson-3', title: 'Мәліметтерді тазалау' }}
-      widget={<DalaZheliNoise />}
-      quiz={<Quiz questions={quizQuestions} onComplete={handleQuizComplete} />}
-    >
+    <LessonPage slug="module-1-lesson-2" questions={questions} widget={<FeaturePrimeta />}>
       <Metaphor>
-        <p className="mb-4">
-          Шопан малды санайды: <strong>салмақ</strong> — сандармен (45 кг),
-          <strong>түс</strong> — атаулармен (ақ, қара).
+        <p>
+          Шопан екі түрлі жазады. Салмақты — таразыға қарап, санмен: 45, 52, 61. Ал түсті — атаумен:
+          ақ, қара, қоңыр.
         </p>
         <p>
-          Бізде де мәліметтер екі типті болады: сандармен және санаттармен.
+          Екеуін бірдей ұстауға болмайды. Салмақтардың орташасын табуға болады, ал «ақ пен қараның
+          орташасы» деген сөз мағынасыз.
         </p>
       </Metaphor>
 
       <Intuition>
-        <p className="mb-4">
-          <strong>Сандық</strong> — сандармен өлшенетін. Мысалы: жас, бой, температура.
-          Бұл мәліметтермен арифметикалық амалдар жасай аламыз.
+        <p>
+          <strong>Сандық</strong> мәлімет өлшенеді: оны қосуға, азайтуға, орташалауға болады — жас,
+          бой, температура, салмақ. Ол екіге бөлінеді: <em>үзіліссіз</em> (салмақ 45.3 болуы мүмкін)
+          және <em>дискретті</em> (қой саны тек бүтін).
         </p>
         <p>
-          <strong>Саптық</strong> — санаттармен сипатталатын. Мысалы: түс, қала, жыныс.
-          Бұлармен тек салыстыру жасаймыз.
+          <strong>Саптық</strong> мәлімет санатқа жатқызады. Онымен тек салыстыру жасаймыз: тең
+          немесе тең емес. Кейде санаттың реті болады — «нашар, орташа, жақсы». Ондайды реттік
+          дейді.
         </p>
+        <Note>
+          Түр дұрыс анықталмаса, модель бүкіл кестені қате оқиды. Сондықтан бұл — жұмыстың ең
+          басындағы қадам.
+        </Note>
       </Intuition>
 
-      <Formal term="Сандық vs Саптық">
-        <p className="mb-4">
-          Сандық мәліметтер — үзіліссіз немесе дискретті сандар.
-          Саптық мәліметтер — номиналды немесе реттік категориялар.
+      <Formal term="Сандық (numerical) және саптық (categorical)">
+        <p>
+          Модель тек санмен жұмыс істейді, сондықтан саптық мәліметті санға айналдыру керек. Бірақ
+          «ақ = 1, қара = 2, қоңыр = 3» деп қоюға болмайды: солай жасасаң, модель үшін қоңыр
+          автоматты түрде ақтан үлкен болып шығады.
         </p>
-        <code className="block p-3 bg-dala-surface rounded text-sm font-mono">
-          сандық = [45, 50, 55]  # кг{'\n'}
-          саптық = ['ақ', 'қара', 'қоңыр']  # түс
-        </code>
+        <Formula note="Бір ыстық кодтау (one-hot): әр санатқа жеке баған, тек біреуі ғана бірге тең.">
+          қоңыр → (ақ=0, қара=0, қоңыр=1)
+        </Formula>
+        <p>
+          Осылай жалған реттілік жоғалады да, санаттар бір-бірінен тәуелсіз болады. Дәл сол себептен
+          бір бағанның орнына үш баған пайда болады.
+        </p>
       </Formal>
-    </LessonShell>
+
+      <Code>{`# Сандық: орташа мәні бар
+салмақтар = [45, 52, 61]
+орташа = sum(салмақтар) / len(салмақтар)   # 52.67
+
+# Саптық: орташа мәні жоқ, тек санау бар
+түстер = ["ақ", "қара", "ақ"]
+жиілік = {"ақ": 2, "қара": 1}`}</Code>
+
+      <Intuition>
+        <p>
+          Интерактивте әр белгі — жеке баған. Бірін қосып, бірін алып таста да, дәлдіктің қалай
+          өзгеретінін бақыла: бағанның түрі мен пайдасы әрқашан бір нәрсе емес.
+        </p>
+      </Intuition>
+    </LessonPage>
   )
 }

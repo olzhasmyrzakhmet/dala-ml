@@ -1,30 +1,31 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { IconWifiOff } from '@/components/ui/icons'
 
 export function OfflineIndicator() {
-  const [isOffline, setIsOffline] = useState(false)
+  const [offline, setOffline] = useState(false)
 
   useEffect(() => {
-    setIsOffline(!navigator.onLine)
-
-    const handleOffline = () => setIsOffline(true)
-    const handleOnline = () => setIsOffline(false)
-
-    window.addEventListener('offline', handleOffline)
-    window.addEventListener('online', handleOnline)
-
+    const sync = () => setOffline(!navigator.onLine)
+    sync()
+    window.addEventListener('offline', sync)
+    window.addEventListener('online', sync)
     return () => {
-      window.removeEventListener('offline', handleOffline)
-      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', sync)
+      window.removeEventListener('online', sync)
     }
   }, [])
 
-  if (!isOffline) return null
+  if (!offline) return null
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] bg-dala-alert/90 text-dala-bg px-4 py-2 text-center text-sm font-medium">
-      🔌 Офлайн режимі
+    <div
+      role="status"
+      className="dala-rise fixed inset-x-0 bottom-0 z-[100] flex items-center justify-center gap-2 bg-dala-gold px-4 py-2 text-sm font-medium text-dala-bg"
+    >
+      <IconWifiOff size={16} />
+      Интернет жоқ — жүктелген модульдер жұмыс істейді
     </div>
   )
 }

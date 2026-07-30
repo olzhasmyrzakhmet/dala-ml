@@ -1,109 +1,207 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
-import { Canvas } from './_shared/Canvas'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { Canvas, useReducedMotion } from './_shared/Canvas'
 import { Slider } from './_shared/Slider'
+import { WidgetFrame } from './_shared/WidgetFrame'
+import { P, alpha } from './_shared/palette'
+import { axisLabel, clamp, dot, labelFont, makePlot, polyline, steppe } from './_shared/draw'
+import { TRUE_INTERCEPT, TRUE_SLOPE, zheli } from '@/lib/sim/lessons'
 
-export function DalaZheliNoise({ width = 340, height = 180 }: { width?: number; height?: number }) {
-  const [wind, setWind] = useState(0.2)
-  const [points, setPoints] = useState<{ x: number; y: number }[]>([])
-  const animationRef = useRef<number>()
+export function DalaZheliNoise() {
+  const [wind, setWind] = useState(0.25)
+  const [count, setCount] = useState(24)
+  const reduced = useReducedMotion()
 
-  useEffect(() => {
-    // Generate base points
-    const basePoints: { x: number; y: number }[] = []
-    for (let i = 0; i < 10; i++) {
-      basePoints.push({
-        x: 40 + i * 26,
-        y: 90 + Math.sin(i * 0.5) * 20,
-      })
-    }
-    setPoints(basePoints)
-  }, [])
+  const r = useMemo(() => zheli(wind, count), [wind, count])
+  const state = useRef({ wind, reduced })
+  state.current = { wind, reduced }
 
-  useEffect(() => {
-    // Animate wind
-    const animate = () => {
-      setPoints((prev) =>
-        prev.map((p, i) => ({
-          x: p.x + (Math.random() - 0.5) * wind * 10,
-          y: p.y + (Math.random() - 0.5) * wind * 5,
-        }))
+  const drawSteppe = useCallback(
+    (ctx: CanvasRenderingContext2D, w: number, h: number, t: number) => {
+      steppe(ctx, w, h, 0.34)
+      const padX = 14
+      const toX = (x: number) => padX + ((x + 1) / 2) * (w - 2 * padX)
+      const toY = (y: number) => h * 0.6 - y * (h * 0.3)
+      const { wind: v, reduced: still } = state.current
+      const phase = still ? 0 : t * 0.0022
+
+      // Ветровые струи: чем сильнее ветер, тем их больше и быстрее.
+      ctx.save()
+      ctx.lineCap = 'round'
+      const streaks = Math.round(3 + v * 12)
+      for (let i = 0; i < streaks; i++) {
+        const y = (h * 0.08) + ((i * 37) % Math.max(1, h * 0.5))
+        const off = ((phase * (60 + i * 9)) % (w + 90)) - 45
+        ctx.strokeStyle = alpha.gold(0.06 + v * 0.16)
+        ctx.lineWidth = 1 + (i % 2)
+        ctx.beginPath()
+        ctx.moveTo(off, y)
+        ctx.quadraticCurveTo(off + 22, y - 4, off + 44, y)
+        ctx.stroke()
+      }
+      ctx.restore()
+
+      // Истинная закономерность — то, что есть в природе.
+      polyline(
+        ctx,
+        [
+          { x: toX(-1), y: toY(TRUE_INTERCEPT - TRUE_SLOPE) },
+          { x: toX(1), y: toY(TRUE_INTERCEPT + TRUE_SLOPE) },
+        ],
+        alpha.muted(0.55),
+        2,
+        [5, 5]
       )
-      animationRef.current = requestAnimationFrame(animate)
-    }
-    animationRef.current = requestAnimationFrame(animate)
-    return () => {
-      if (animationRef.current) cancelAnimationFrame(animationRef.current)
-    }
-  }, [wind])
 
-  const draw = useCallback((ctx: CanvasRenderingContext2D, dpr: number) => {
-    const w = width
-    const h = height
+      // Трава, треплемая ветром — то же значение шума, что и в данных.
+      ctx.save()
+      ctx.strokeStyle = alpha.water(0.25)
+      ctx.lineWidth = 1
+      for (let x = 8; x < w - 6; x += 13) {
+        const sway = still ? 0 : Math.sin(phase * 3 + x * 0.15) * v * 7
+        ctx.beginPath()
+        ctx.moveTo(x, h - 4)
+        ctx.quadraticCurveTo(x + sway * 0.5, h - 12, x + sway, h - 20)
+        ctx.stroke()
+      }
+      ctx.restore()
 
-    ctx.fillStyle = '#1B1E17'
-    ctx.fillRect(0, 0, w, h)
+      for (const p of r.points) dot(ctx, toX(p.x), clamp(toY(p.y), 4, h - 4), 4, P.gold, alpha.black(0.4))
 
-    // True line
-    ctx.beginPath()
-    ctx.strokeStyle = '#9A9B90'
-    ctx.lineWidth = 2
-    ctx.setLineDash([5, 5])
-    for (let i = 0; i < 10; i++) {
-      const x = 40 + i * 26
-      const y = 90 + Math.sin(i * 0.5) * 20
-      if (i === 0) ctx.moveTo(x, y)
-      else ctx.lineTo(x, y)
-    }
-    ctx.stroke()
-    ctx.setLineDash([])
+      axisLabel(ctx, v > 0.45 ? 'жел деректі шайқап тұр' : 'дала тыныш', w / 2, h - 10)
+    },
+    [r]
+  )
 
-    // Wind lines
-    ctx.strokeStyle = 'rgba(217, 164, 65, 0.3)'
-    ctx.lineWidth = 1
-    for (let i = 0; i < 5; i++) {
-      const y = 30 + i * 25
-      ctx.beginPath()
-      ctx.moveTo(20, y)
-      ctx.lineTo(w - 20, y + Math.sin(i) * 10)
-      ctx.stroke()
-    }
+  const drawFit = useCallback(
+    (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+      const span = Math.max(1.2, ...r.points.map((p) => Math.abs(p.y) + 0.15))
+      const plot = makePlot(ctx, w, h, {
+        xRange: [-1, 1],
+        yRange: [-span, span],
+        xLabel: 'белгі',
+        yLabel: 'жауап',
+        padL: 34,
+      })
 
-    // Noisy points
-    points.forEach((p) => {
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, 6, 0, Math.PI * 2)
-      ctx.fillStyle = wind > 0.5 ? '#D9614C' : '#3FA9A0'
-      ctx.fill()
-    })
+      polyline(
+        ctx,
+        [
+          { x: plot.x(-1), y: plot.y(TRUE_INTERCEPT - TRUE_SLOPE) },
+          { x: plot.x(1), y: plot.y(TRUE_INTERCEPT + TRUE_SLOPE) },
+        ],
+        alpha.muted(0.6),
+        2,
+        [5, 5]
+      )
 
-    // Label
-    ctx.fillStyle = '#9A9B90'
-    ctx.font = '12px system-ui'
-    ctx.textAlign = 'center'
-    ctx.fillText('Дала желі (noise)', w / 2, h - 8)
-  }, [width, height, wind, points])
+      // Остатки: вертикальные отрезки от точки до подогнанной прямой.
+      ctx.save()
+      ctx.strokeStyle = alpha.alert(0.35)
+      ctx.lineWidth = 1
+      for (const p of r.points) {
+        ctx.beginPath()
+        ctx.moveTo(plot.x(p.x), clamp(plot.y(p.y), plot.top, plot.bottom))
+        ctx.lineTo(plot.x(p.x), clamp(plot.y(r.intercept + r.slope * p.x), plot.top, plot.bottom))
+        ctx.stroke()
+      }
+      ctx.restore()
+
+      for (const p of r.points) {
+        dot(ctx, plot.x(p.x), clamp(plot.y(p.y), plot.top, plot.bottom), 3, P.gold)
+      }
+
+      polyline(
+        ctx,
+        [
+          { x: plot.x(-1), y: clamp(plot.y(r.intercept - r.slope), plot.top, plot.bottom) },
+          { x: plot.x(1), y: clamp(plot.y(r.intercept + r.slope), plot.top, plot.bottom) },
+        ],
+        P.water,
+        2.5
+      )
+
+      ctx.save()
+      ctx.font = labelFont(600, 12)
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = P.muted
+      ctx.fillText('- - шын заңдылық', plot.left + 6, plot.top + 8)
+      ctx.fillStyle = P.water
+      ctx.fillText('— модель тапқаны', plot.left + 6, plot.top + 21)
+      ctx.restore()
+    },
+    [r]
+  )
+
+  const status =
+    r.slopeError > 0.18
+      ? {
+          tone: 'bad' as const,
+          title: 'Жел жеңді',
+          text: 'Шу тым күшті: модель шын еңісті таба алмай тұр. Дерек санын арттыр — қате орташаланады.',
+        }
+      : r.slopeError > 0.07
+        ? {
+            tone: 'warn' as const,
+            title: 'Жел кедергі жасайды',
+            text: 'Модель бағытты дұрыс тапты, бірақ дәлдігі жетпейді.',
+          }
+        : {
+            tone: 'ok' as const,
+            title: 'Заңдылық көрініп тұр',
+            text: 'Шу аз немесе дерек жеткілікті — модель шын еңісті дәл тапты.',
+          }
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="bg-dala-surface rounded-xl border border-dala-gold/20 p-4 mb-4">
-        <Canvas width={width} height={height} onDraw={draw} className="rounded-lg" />
-      </div>
-      <div className="bg-dala-surface rounded-xl border border-dala-gold/20 p-4">
-        <Slider
-          label="Жел күші (noise level)"
-          value={wind}
-          min={0}
-          max={1}
-          step={0.05}
-          onChange={setWind}
-          formatValue={(v) => `${(v * 100).toFixed(0)}%`}
-        />
-      </div>
-      <p className="mt-4 text-sm text-dala-muted">
-        {wind > 0.5 ? '❌ Күшті жел — модель шуылды үйреніп жатыр' : '✅ Тыныш — модель заңдылықты көріп тұр'}
-      </p>
-    </div>
+    <WidgetFrame
+      title="Дала желі: шу"
+      hint="Желді күшейт — модель адасады; дерек қос — қайта табады"
+      onReset={() => {
+        setWind(0.25)
+        setCount(24)
+      }}
+      metaphor={
+        <Canvas draw={drawSteppe} ratio={0.6} minHeight={124} maxHeight={200} label="Дала желі деректерді шайқап тұр" />
+      }
+      science={
+        <Canvas draw={drawFit} animate={false} ratio={0.6} minHeight={124} maxHeight={200} label="Шулы деректер бойынша сызықтық регрессия" />
+      }
+      readouts={[
+        { label: 'Шын еңіс', value: TRUE_SLOPE.toFixed(2) },
+        { label: 'Табылған', value: r.slope.toFixed(2), tone: status.tone },
+        { label: 'R²', value: r.r2.toFixed(2) },
+      ]}
+      controls={
+        <>
+          <Slider
+            label="Жел күші"
+            value={wind}
+            min={0}
+            max={0.8}
+            step={0.02}
+            onChange={setWind}
+            format={(v) => `${Math.round(v * 100)}%`}
+            minLabel="тыныш"
+            maxLabel="дауыл"
+            hint="деректегі шу"
+            tone="gold"
+          />
+          <Slider
+            label="Дерек саны"
+            value={count}
+            min={6}
+            max={80}
+            step={1}
+            onChange={(v) => setCount(Math.round(v))}
+            format={(v) => `${v}`}
+            minLabel="аз"
+            maxLabel="көп"
+            hint="бақылау саны"
+          />
+        </>
+      }
+      status={status}
+    />
   )
 }

@@ -1,87 +1,101 @@
 'use client'
 
-import { LessonShell, Metaphor, Intuition, Formal } from '@/components/lesson/LessonShell'
-import { Quiz } from '@/components/lesson/Quiz'
-import { useProgress } from '@/lib/progress'
+import { LessonPage } from '@/components/lesson/LessonPage'
+import { Formal, Formula, Intuition, Metaphor, Note } from '@/components/lesson/LessonShell'
+import { FeaturePrimeta } from '@/components/interactive/FeaturePrimeta'
+import type { QuizQuestion } from '@/components/lesson/Quiz'
 
-const frontmatter = {
-  module: 1,
-  lesson: 1,
-  slug: 'module-1-lesson-1',
-  title: 'Мәліметтер деген не?',
-  titleRu: 'Что такое данные?',
-  minutes: 10,
-  concepts: ['data', 'features'],
-  terms: ['мәліметтер', 'ерекшеліктер'],
-}
-
-const quizQuestions = [
+const questions: QuizQuestion[] = [
   {
     id: 'q1',
-    question: 'Мәліметтер деген не?',
+    question: 'Шопан кітапшасындағы «салмағы 45 кг» деген жазу — бұл не?',
     options: [
-      { id: 'a', text: 'Сандар мен мәтін', explanation: 'Дұрыс! Мәліметтер — бұл сандар, мәтін, суреттер...' },
-      { id: 'b', text: 'Тек сандар', explanation: 'Мәліметтер тек сандар емес' },
-      { id: 'c', text: 'Тек мәтін', explanation: 'Мәліметтер тек мәтін емес' },
+      { id: 'a', text: 'Бір қойдың бір ерекшелігі', explanation: 'Дұрыс. Салмақ — қойдың бір ғана қасиеті, яғни ерекшелік (feature).' },
+      { id: 'b', text: 'Бүкіл отар туралы дерек', explanation: 'Жоқ: бұл сан бір ғана қойға тиесілі, отарға емес.' },
+      { id: 'c', text: 'Модельдің болжамы', explanation: 'Жоқ: бұл өлшенген факт. Болжамды модель жасайды, ал мұны шопан өлшеп жазған.' },
     ],
     correctId: 'a',
   },
   {
     id: 'q2',
-    question: 'Ерекшелік (feature) деген не?',
+    question: 'Кітапшада 200 қой жазылған, әрқайсысында жасы, түсі, салмағы бар. Ерекшелік нешеу?',
     options: [
-      { id: 'a', text: 'Бір қасиет', explanation: 'Дұрыс! Ерекшелік — бұл бір қасиет' },
-      { id: 'b', text: 'Бүкіл деректер', explanation: 'Бұл дұрыс емес' },
-      { id: 'c', text: 'Модель', explanation: 'Бұл дұрыс емес' },
+      { id: 'a', text: '200', explanation: 'Бұл — жол саны, яғни объект саны. Ерекшелік — бағанда тұрады.' },
+      { id: 'b', text: '3', explanation: 'Дұрыс. Жасы, түсі, салмағы — үш ерекшелік. Ал 200 — объект саны.' },
+      { id: 'c', text: '600', explanation: 'Бұл — кестедегі ұяшық саны (200 × 3), ерекшелік саны емес.' },
     ],
-    correctId: 'a',
+    correctId: 'b',
+  },
+  {
+    id: 'q3',
+    question: 'Әр қойдың ауырғанын не ауырмағанын жазып қойдық. Бұл баған қалай аталады?',
+    options: [
+      { id: 'a', text: 'Ерекшелік', explanation: 'Жақын, бірақ дәл емес: бұл — біз болжағымыз келетін жауап, кіріс емес.' },
+      { id: 'b', text: 'Мұндама', explanation: 'Дұрыс. Модель тапқысы келетін жауап — мұндама (label).' },
+      { id: 'c', text: 'Модель', explanation: 'Жоқ: модель — бағдарлама, ал бұл — дерек бағаны.' },
+    ],
+    correctId: 'b',
+  },
+  {
+    id: 'q4',
+    question: 'Неге бір ғана ерекшелікпен шектелмейміз?',
+    options: [
+      { id: 'a', text: 'Компьютер көп санды жақсы көреді', explanation: 'Жоқ: мәселе компьютердің қалауында емес.' },
+      { id: 'b', text: 'Бір қасиет шындықтың бір бөлігін ғана көрсетеді', explanation: 'Дұрыс. Тек салмақ бойынша қойдың ауырғанын білу қиын, ал жасымен бірге қарасаң — оңайырақ.' },
+      { id: 'c', text: 'Ерекшелік көп болса, дәлдік әрқашан өседі', explanation: 'Жоқ: пайдасыз ерекшелік дәлдікті арттырмайды. Мұны төмендегі интерактивтен көресің.' },
+    ],
+    correctId: 'b',
   },
 ]
 
-export default function LessonPage() {
-  const { complete } = useProgress()
-
-  const handleQuizComplete = (score: number, answers: Record<string, string>) => {
-    complete(frontmatter.slug, score, answers)
-  }
-
+export default function Page() {
   return (
-    <LessonShell
-      frontmatter={frontmatter}
-      prevLesson={null}
-      nextLesson={{ slug: 'module-1-lesson-2', title: 'Мәліметтер түрлері' }}
-      quiz={<Quiz questions={quizQuestions} onComplete={handleQuizComplete} />}
-    >
+    <LessonPage slug="module-1-lesson-1" questions={questions} widget={<FeaturePrimeta />}>
       <Metaphor>
-        <p className="mb-4">
-          Шопанның кітапшасында әр қой туралы ақпарат бар: жасы, түсі, салмағы.
-          Бұл — <strong>мәліметтер</strong>.
+        <p>
+          Шопанның кітапшасы бар. Онда әр қой жеке жолға жазылған: жасы, түсі, салмағы, қай
+          жайлауда жүргені. Жылдар бойы жиналған осы жазба — <strong>мәліметтер</strong>.
         </p>
         <p>
-          Әр қасиет (жас, түс, салмақ) — бұл <strong>ерекшелік</strong> (feature).
+          Әр баған — қойдың бір қасиеті, оны <strong>ерекшелік</strong> дейді. Ал шопан білгісі
+          келетін жауап — «бұл қой ауыра ма?» — бөлек баған, ол <strong>мұндама</strong> деп
+          аталады.
         </p>
       </Metaphor>
 
       <Intuition>
-        <p className="mb-4">
-          Мәліметтер — бұл біздің айналамыздағы нәрселер туралы ақпарат.
-          Мысалы: ауа температурасы, машина бағасы, адам бойы.
+        <p>
+          Кітапшаны кесте деп ойла. Жолдар — нақты қойлар, бағандар — олар туралы білетініміз.
+          Машиналық оқу дәл осы кестеден басталады: бағдарлама жолдарды қарап шығып, бағандар
+          арасындағы байланысты іздейді.
         </p>
         <p>
-          Ерекшеліктер — бұл мәліметтердің қасиеттері. Әр нәрсе бірнеше
-          ерекшеліктен тұрады.
+          Байланыс табылса, кітапшада жоқ жаңа қой келгенде оның ауыратынын алдын ала айта алады.
+          Бұл сиқыр емес — жинақталған тәжірибенің санмен жазылған түрі.
         </p>
+        <Note>Дерек жоқ жерде машиналық оқу да жоқ. Алдымен кітапша, содан кейін ғана модель.</Note>
       </Intuition>
 
-      <Formal term="Мәліметтер (Data)">
-        <p className="mb-4">
-          Мәліметтер — бұл фактілер мен сандар жиынтығы, оларды талдауға
-          және өңдеуге болады.
+      <Formal term="Мәліметтер (data), ерекшелік (feature), мұндама (label)">
+        <p>
+          Бір объект — кестенің бір жолы. Оның қасиеттері — ерекшеліктер, ал болжанатын шама —
+          мұндама. Математикада бір объектіні сандар тізбегі ретінде жазады:
         </p>
-        <code className="block p-3 bg-dala-surface rounded text-sm font-mono">
-          қой = {'{'} жасы: 3, түсі: "ақ", салмақ: 45 {'}'}
-        </code>
+        <Formula note="x — ерекшеліктер жиынтығы, y — мұндама. Модель x арқылы y-ті болжауды үйренеді.">
+          x = (жасы, салмағы, түсі) → y = ауыра ма?
+        </Formula>
+        <p>
+          Ерекшелік саны — бір жолдағы сан саны. Объект саны — кестедегі жол саны. Бұл екеуін
+          шатастырмау маңызды: 200 қой және 3 ерекшелік — мүлдем басқа сандар.
+        </p>
       </Formal>
-    </LessonShell>
+
+      <Intuition>
+        <p>
+          Төмендегі интерактивте ауа райын болжаймыз. Қандай белгілерді бақылайтыныңды өзің
+          таңдайсың — дәлдік бірден өзгереді. Байқа: белгілердің бәрі бірдей пайдалы емес.
+        </p>
+      </Intuition>
+    </LessonPage>
   )
 }

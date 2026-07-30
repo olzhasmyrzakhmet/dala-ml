@@ -1,86 +1,164 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Canvas } from './_shared/Canvas'
+import { Segmented, Slider } from './_shared/Slider'
+import { WidgetFrame } from './_shared/WidgetFrame'
+import { P, alpha } from './_shared/palette'
+import { axisLabel, clamp, dot, glowDot, labelFont, makePlot, polyline, steppe } from './_shared/draw'
+import { ZHAILAU_MAX, ZHAILAU_MIN, zhailau } from '@/lib/sim/lessons'
+import { polyEval } from '@/lib/sim/ml'
+import { trueCurve } from '@/lib/sim/datasets'
 
-export function ZhailauQystau({ width = 340, height = 200 }: { width?: number; height?: number }) {
-  const [showTest, setShowTest] = useState(false)
+type Season = 'zhailau' | 'qystau'
 
-  const draw = useCallback((ctx: CanvasRenderingContext2D, dpr: number) => {
-    const w = width
-    const h = height
+export function ZhailauQystau() {
+  const [size, setSize] = useState(8)
+  const [season, setSeason] = useState<Season>('zhailau')
 
-    ctx.fillStyle = '#1B1E17'
-    ctx.fillRect(0, 0, w, h)
+  const r = useMemo(() => zhailau(size), [size])
+  const showing = season === 'zhailau' ? r.train : r.test
 
-    // Train (Жайлау) - зелёная зона
-    ctx.fillStyle = 'rgba(63, 169, 160, 0.2)'
-    ctx.fillRect(20, 20, w / 2 - 30, h - 40)
-    ctx.strokeStyle = '#3FA9A0'
-    ctx.lineWidth = 2
-    ctx.strokeRect(20, 20, w / 2 - 30, h - 40)
+  const drawPasture = useCallback(
+    (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+      steppe(ctx, w, h, season === 'zhailau' ? 0.3 : 0.42)
+      const padX = 14
+      const toX = (x: number) => padX + ((x + 1) / 2) * (w - 2 * padX)
+      const toY = (y: number) => h * 0.62 - y * (h * 0.28)
 
-    // Test (Қыстау) - синяя зона
-    ctx.fillStyle = 'rgba(217, 164, 65, 0.2)'
-    ctx.fillRect(w / 2 + 10, 20, w / 2 - 30, h - 40)
-    ctx.strokeStyle = '#D9A441'
-    ctx.lineWidth = 2
-    ctx.strokeRect(w / 2 + 10, 20, w / 2 - 30, h - 40)
+      // Зимой степь бледнее — сезон читается без подписи.
+      if (season === 'qystau') {
+        ctx.fillStyle = 'rgba(237, 234, 226, 0.06)'
+        ctx.fillRect(0, h * 0.42, w, h * 0.58)
+      }
 
-    // Точки (овцы)
-    const trainPoints = [
-      { x: 50, y: 80 }, { x: 80, y: 100 }, { x: 110, y: 70 },
-      { x: 60, y: 120 }, { x: 100, y: 130 }
-    ]
-    const testPoints = [
-      { x: w / 2 + 40, y: 90 }, { x: w / 2 + 70, y: 110 }, { x: w / 2 + 100, y: 85 }
-    ]
+      const truth: { x: number; y: number }[] = []
+      for (let i = 0; i <= 80; i++) {
+        const x = -1 + (2 * i) / 80
+        truth.push({ x: toX(x), y: toY(trueCurve(x)) })
+      }
+      polyline(ctx, truth, alpha.muted(0.5), 2, [5, 5])
 
-    // Рисуем точки
-    trainPoints.forEach((p) => {
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, 8, 0, Math.PI * 2)
-      ctx.fillStyle = '#3FA9A0'
-      ctx.fill()
-    })
+      const fitted: { x: number; y: number }[] = []
+      for (let i = 0; i <= 160; i++) {
+        const x = -1 + (2 * i) / 160
+        fitted.push({ x: toX(x), y: clamp(toY(polyEval(r.coef, x)), -60, h + 60) })
+      }
+      polyline(ctx, fitted, season === 'zhailau' ? P.water : P.gold, 2.5)
 
-    testPoints.forEach((p) => {
-      ctx.beginPath()
-      ctx.arc(p.x, p.y, 8, 0, Math.PI * 2)
-      ctx.fillStyle = showTest ? '#D9614C' : '#9A9B90'
-      ctx.fill()
-    })
+      const color = season === 'zhailau' ? P.water : P.gold
+      for (const p of showing) {
+        dot(ctx, toX(p.x), toY(p.y), season === 'zhailau' ? 4.5 : 3, color, alpha.black(0.35))
+      }
 
-    // Подписи
-    ctx.fillStyle = '#EDEAE2'
-    ctx.font = '12px system-ui'
-    ctx.textAlign = 'center'
-    ctx.fillText('Жайлау (train)', w / 4, h - 5)
-    ctx.fillText('Қыстау (test)', w * 3 / 4, h - 5)
+      axisLabel(
+        ctx,
+        season === 'zhailau' ? `Жайлау: ${r.train.length} қой` : `Қыстау: ${r.test.length} қой`,
+        w / 2,
+        h - 10
+      )
+    },
+    [r, season, showing]
+  )
 
-    if (showTest) {
-      ctx.fillStyle = '#D9614C'
-      ctx.fillText('Модель нашла train, но провалила test!', w / 2, 15)
-    }
-  }, [width, height, showTest])
+  const drawCurve = useCallback(
+    (ctx: CanvasRenderingContext2D, w: number, h: number) => {
+      const top = Math.max(...r.curveTest, 0.001) * 1.1
+      const plot = makePlot(ctx, w, h, {
+        xRange: [ZHAILAU_MIN, ZHAILAU_MAX],
+        yRange: [0, top],
+        xLabel: 'жайлаудағы қой саны',
+        yLabel: 'қателік',
+        padL: 38,
+      })
+
+      const line = (vals: number[]) =>
+        vals.map((v, i) => ({ x: plot.x(ZHAILAU_MIN + i), y: clamp(plot.y(v), plot.top, plot.bottom) }))
+
+      polyline(ctx, line(r.curveTrain), P.water, 2)
+      polyline(ctx, line(r.curveTest), P.gold, 2)
+
+      const cx = plot.x(size)
+      polyline(ctx, [{ x: cx, y: plot.top }, { x: cx, y: plot.bottom }], alpha.text(0.3), 1)
+      glowDot(ctx, cx, clamp(plot.y(r.trainError), plot.top, plot.bottom), 4, P.water, alpha.water(0.4))
+      glowDot(ctx, cx, clamp(plot.y(r.testError), plot.top, plot.bottom), 4, P.gold, alpha.gold(0.4))
+
+      ctx.save()
+      ctx.font = labelFont(600, 12)
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = P.water
+      ctx.fillText('— жайлау', plot.right - 66, plot.top + 8)
+      ctx.fillStyle = P.gold
+      ctx.fillText('— қыстау', plot.right - 66, plot.top + 21)
+      ctx.restore()
+    },
+    [r, size]
+  )
+
+  const status =
+    r.gap > 0.09
+      ? {
+          tone: 'bad' as const,
+          title: 'Жайлауды ғана біледі',
+          text: 'Қой аз — модель осы бірнеше нүктені жаттады. Қыстауда, яғни жаңа деректе, қателеседі.',
+        }
+      : r.gap > 0.035
+        ? {
+            tone: 'warn' as const,
+            title: 'Айырма әлі бар',
+            text: 'Жайлаудағы қате қыстаудағыдан айтарлықтай кіші. Тағы дерек қосып көр.',
+          }
+        : {
+            tone: 'ok' as const,
+            title: 'Жалпылай алды',
+            text: 'Жайлау мен қыстаудағы қате жақын — модель жаттамай, заңдылықты үйренді.',
+          }
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="bg-dala-surface rounded-xl border border-dala-gold/20 p-4 mb-4">
-        <Canvas width={width} height={height} onDraw={draw} className="rounded-lg" />
-      </div>
-      <button
-        onClick={() => setShowTest(!showTest)}
-        className="w-full px-4 py-3 rounded-lg bg-dala-water text-dala-bg font-medium min-h-[44px] hover:brightness-110 active:scale-[0.98] transition-all"
-      >
-        {showTest ? 'Жайлауға қайту' : 'Қыстауды тексеру'}
-      </button>
-      <p className="mt-4 text-sm text-dala-muted">
-        {showTest 
-          ? '❌ Модель жайлауды жақсы біледі, бірақ қыстауда нашар жұмыс істейді'
-          : '✅ Жайлауда үйрен, қыстауда тексер — бұл generalization'
-        }
-      </p>
-    </div>
+    <WidgetFrame
+      title="Жайлау мен қыстау"
+      hint="Жайлауда үйрен, қыстауда тексер — дерек көбейген сайын айырма азаяды"
+      onReset={() => {
+        setSize(8)
+        setSeason('zhailau')
+      }}
+      metaphor={
+        <Canvas draw={drawPasture} animate={false} ratio={0.6} minHeight={124} maxHeight={200} label="Жайлау мен қыстаудағы отар және модель тартқан қисық" />
+      }
+      science={
+        <Canvas draw={drawCurve} animate={false} ratio={0.6} minHeight={124} maxHeight={200} label="Оқу қисығы: қателіктің дерек көлеміне тәуелділігі" />
+      }
+      readouts={[
+        { label: 'Жайлау қатесі', value: r.trainError.toFixed(3) },
+        { label: 'Қыстау қатесі', value: r.testError.toFixed(3) },
+        { label: 'Айырма', value: r.gap.toFixed(3), tone: status.tone },
+      ]}
+      controls={
+        <>
+          <Slider
+            label="Жайлаудағы қой саны"
+            value={size}
+            min={ZHAILAU_MIN}
+            max={ZHAILAU_MAX}
+            step={1}
+            onChange={(v) => setSize(Math.round(v))}
+            format={(v) => String(v)}
+            minLabel="аз дерек"
+            maxLabel="көп дерек"
+            hint="оқу деректерінің көлемі"
+          />
+          <Segmented
+            label="Қай жерде тексереміз"
+            value={season}
+            onChange={setSeason}
+            options={[
+              { value: 'zhailau', label: 'Жайлау (оқу)' },
+              { value: 'qystau', label: 'Қыстау (тексеру)' },
+            ]}
+          />
+        </>
+      }
+      status={status}
+    />
   )
 }

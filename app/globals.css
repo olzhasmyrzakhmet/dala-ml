@@ -3,13 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --bg: #12140F;
-  --surface: #1B1E17;
-  --text: #EDEAE2;
-  --muted: #9A9B90;
-  --gold: #D9A441;
-  --water: #3FA9A0;
-  --alert: #D9614C;
+  --bg: #12140f;
+  --surface: #1b1e17;
+  --surface-up: #22261c;
+  --text: #edeae2;
+  --muted: #9a9b90;
+  --gold: #d9a441;
+  --water: #3fa9a0;
+  --alert: #d9614c;
+  --border: rgba(217, 164, 65, 0.18);
+
+  color-scheme: dark;
 }
 
 * {
@@ -18,36 +22,209 @@
 
 html {
   scroll-behavior: smooth;
+  /* Убирает 300 мс задержку тапа и авто-зум по двойному тапу. */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  font-family: Inter, system-ui, -apple-system, sans-serif;
+  font-family: var(--font-inter), Inter, system-ui, -apple-system, sans-serif;
+  font-size: 17px;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Никакого горизонтального скролла на 360px — ни при каких обстоятельствах. */
+  overflow-x: hidden;
 }
 
-/* Custom scrollbar */
+/* ---------- Скроллбар ---------- */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
-
 ::-webkit-scrollbar-track {
   background: var(--bg);
 }
-
 ::-webkit-scrollbar-thumb {
-  background: var(--muted);
+  background: #3a3d33;
   border-radius: 3px;
 }
 
-/* Focus styles for accessibility */
+/* ---------- Фокус ---------- */
 :focus-visible {
   outline: 2px solid var(--water);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
-/* Reduced motion */
+/* ---------- Выделение ---------- */
+::selection {
+  background: rgba(63, 169, 160, 0.3);
+  color: var(--text);
+}
+
+/* ============================================================
+   Нативный ползунок input[type=range].
+   Высота элемента 44px = зона нажатия по HIG; трек рисуется внутри.
+   Заполнение — через --pct, который выставляет React.
+   ============================================================ */
+.dala-range {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  /* Вертикальный скролл страницы остаётся, горизонтальный жест ловит ползунок. */
+  touch-action: pan-y;
+
+  --range-accent: var(--water);
+  --range-glow: rgba(63, 169, 160, 0.45);
+  --pct: 50%;
+}
+.dala-range--gold {
+  --range-accent: var(--gold);
+  --range-glow: rgba(217, 164, 65, 0.45);
+}
+.dala-range--alert {
+  --range-accent: var(--alert);
+  --range-glow: rgba(217, 97, 76, 0.45);
+}
+.dala-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* --- WebKit / Blink --- */
+.dala-range::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--range-accent) 0%,
+    var(--range-accent) var(--pct),
+    #2b2f25 var(--pct),
+    #2b2f25 100%
+  );
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+.dala-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  margin-top: -10px;
+  border-radius: 50%;
+  background: var(--range-accent);
+  border: 3px solid var(--bg);
+  box-shadow:
+    0 0 0 1px var(--range-glow),
+    0 4px 12px rgba(0, 0, 0, 0.55);
+  transition:
+    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 180ms ease-out;
+}
+.dala-range:hover::-webkit-slider-thumb {
+  transform: scale(1.06);
+}
+.dala-range:active::-webkit-slider-thumb {
+  transform: scale(1.14);
+  box-shadow:
+    0 0 0 8px var(--range-glow),
+    0 4px 12px rgba(0, 0, 0, 0.55);
+}
+.dala-range:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 6px var(--range-glow),
+    0 4px 12px rgba(0, 0, 0, 0.55);
+}
+.dala-range:focus {
+  outline: none;
+}
+
+/* --- Firefox --- */
+.dala-range::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: #2b2f25;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+.dala-range::-moz-range-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--range-accent);
+}
+.dala-range::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--range-accent);
+  border: 3px solid var(--bg);
+  box-shadow:
+    0 0 0 1px var(--range-glow),
+    0 4px 12px rgba(0, 0, 0, 0.55);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dala-range:active::-moz-range-thumb {
+  transform: scale(1.14);
+}
+.dala-range:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 6px var(--range-glow),
+    0 4px 12px rgba(0, 0, 0, 0.55);
+}
+
+/* ============================================================
+   Орнамент-разделитель: тонкая линия, а не фон (SPEC §2).
+   ============================================================ */
+.dala-ornament {
+  height: 8px;
+  opacity: 0.25;
+  background-repeat: repeat-x;
+  background-size: 24px 8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='8' viewBox='0 0 24 8'%3E%3Cpath d='M0 4h4l2-3 2 3h4l2 3 2-3h4l2-3 2 3h2' fill='none' stroke='%23D9A441' stroke-width='1'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   Мягкое появление контента — одна анимация, а не карнавал.
+   ============================================================ */
+@keyframes dala-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.dala-rise {
+  animation: dala-rise 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes dala-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(63, 169, 160, 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(63, 169, 160, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(63, 169, 160, 0);
+  }
+}
+.dala-pulse {
+  animation: dala-pulse-ring 2.4s ease-out infinite;
+}
+
+/* ---------- Уважение к prefers-reduced-motion ---------- */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   *,
   *::before,
   *::after {

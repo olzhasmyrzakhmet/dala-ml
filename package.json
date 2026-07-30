@@ -8,9 +8,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
-    "prod:verify": "node scripts/prod-verify.mjs"
+    "e2e:mobile": "playwright test --project=\"Mobile Chrome\"",
+    "e2e:offline": "playwright test -c playwright.dist.config.ts",
+    "serve:dist": "node scripts/serve-dist.mjs",
+    "shots": "playwright test --project=\"Mobile Chrome\" e2e/shots.spec.ts",
+    "icons": "node scripts/make-icons.mjs",
+    "prod:verify": "node scripts/prod-verify.mjs",
+    "e2e:perf": "playwright test -c playwright.perf.config.ts"
   },
   "dependencies": {
     "next": "14.2.5",

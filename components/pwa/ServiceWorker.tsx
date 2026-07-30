@@ -4,16 +4,15 @@ import { useEffect } from 'react'
 
 export function ServiceWorker() {
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          console.log('SW registered:', registration.scope)
-        })
-        .catch((error) => {
-          console.log('SW registration failed:', error)
-        })
+    if (!('serviceWorker' in navigator)) return
+    // Регистрируем после загрузки: SW не должен конкурировать за первый экран.
+    const register = () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // Приватный режим или http — приложение работает и без офлайна.
+      })
     }
+    if (document.readyState === 'complete') register()
+    else window.addEventListener('load', register, { once: true })
   }, [])
 
   return null
