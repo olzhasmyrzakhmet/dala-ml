@@ -17,17 +17,22 @@ export default defineConfig({
   timeout: 45000,
   reporter: process.env.CI ? 'list' : 'html',
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    // BASE_URL позволяет прогнать те же тесты по боевому домену:
+    //   BASE_URL=https://dala-ml.vercel.app npx playwright test --project="Mobile Chrome"
+    baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'Mobile Chrome', use: { ...devices['Pixel 5'] } },
   ],
-  webServer: {
-    command: 'npm run build && node scripts/serve-dist.mjs 4173',
-    url: 'http://127.0.0.1:4173/',
-    reuseExistingServer: !process.env.CI,
-    timeout: 300000,
-  },
+  // Против внешнего адреса свой сервер поднимать не нужно.
+  webServer: process.env.BASE_URL
+    ? undefined
+    : {
+        command: 'npm run build && node scripts/serve-dist.mjs 4173',
+        url: 'http://127.0.0.1:4173/',
+        reuseExistingServer: !process.env.CI,
+        timeout: 300000,
+      },
 })

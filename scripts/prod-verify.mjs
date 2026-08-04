@@ -229,11 +229,14 @@ async function main() {
     let bytes = 0
     let raw = 0
     for (const u of urls) {
-      const r = await fetch(`${BASE}${u}`, { headers: { 'accept-encoding': 'gzip, br' } })
+      const r = await fetch(`${BASE}${u}`)
+      // fetch отдаёт уже распакованное тело, а Vercel шлёт сжатые ответы
+      // чанками, без content-length. Поэтому жмём сами: это сопоставимо
+      // и на проде, и на локальной раздаче. Brotli у Vercel даст ещё меньше,
+      // так что оценка консервативная.
       const body = Buffer.from(await r.arrayBuffer())
       raw += body.byteLength
-      const encoded = r.headers.get('content-encoding')
-      bytes += encoded ? Number(r.headers.get('content-length') || body.byteLength) : gzipSync(body).byteLength
+      bytes += gzipSync(body).byteLength
     }
     const kb = Math.round(bytes / 1024)
     const rawKb = Math.round(raw / 1024)

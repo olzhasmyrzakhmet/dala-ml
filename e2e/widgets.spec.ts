@@ -156,9 +156,12 @@ test.describe('AryqGradient — эталонный интерактив', () => 
   })
 })
 
+/** На проде /dev закрыт редиректом, поэтому берём публичную витрину. */
+const GALLERY = process.env.BASE_URL ? '/interaktiv' : '/dev/widgets'
+
 test.describe('Все восемь интерактивов', () => {
   test('у каждого есть обе панели и рабочее управление', async ({ page }) => {
-    await page.goto('/dev/widgets')
+    await page.goto(GALLERY)
     const sections = page.locator('section[data-widget]')
     await expect(sections).toHaveCount(8)
 
@@ -173,14 +176,14 @@ test.describe('Все восемь интерактивов', () => {
 
   test('на 360px нет горизонтального скролла', async ({ page }) => {
     await page.setViewportSize({ width: 360, height: 780 })
-    await page.goto('/dev/widgets')
+    await page.goto(GALLERY)
     await page.locator('canvas').first().waitFor()
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
     expect(overflow).toBe(false)
   })
 
   test('OverfitField: сложность меняет обе ошибки', async ({ page }) => {
-    await page.goto('/dev/widgets')
+    await page.goto(GALLERY)
     const s = page.locator('section[data-widget="overfit"]')
     const before = await s.locator('dl dd').allTextContents()
 
@@ -191,7 +194,7 @@ test.describe('Все восемь интерактивов', () => {
   })
 
   test('TangbaClassify: тап по полю ставит тавро', async ({ page }) => {
-    await page.goto('/dev/widgets')
+    await page.goto(GALLERY)
     const s = page.locator('section[data-widget="tangba"]')
     const count = s.locator('dl dd').first()
     const before = Number(await count.textContent())

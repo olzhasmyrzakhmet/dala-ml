@@ -74,9 +74,11 @@ test.describe('Интерфейс тілі', () => {
 })
 
 test.describe('Қызметтік беттер', () => {
-  test('/dev/widgets noindex белгісімен', async ({ page }) => {
-    const res = await page.goto('/dev/widgets')
-    expect(res?.status()).toBe(200)
+  test('/dev/widgets жабық немесе noindex', async ({ page }) => {
+    await page.goto('/dev/widgets')
+    // На проде правило хостинга уводит на главную; локально страница открыта,
+    // но помечена noindex. Оба исхода допустимы, «просто открыта» — нет.
+    if (new URL(page.url()).pathname === '/') return
     const robots = await page.locator('meta[name="robots"]').getAttribute('content')
     expect(robots).toContain('noindex')
   })

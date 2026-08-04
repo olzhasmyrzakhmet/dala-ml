@@ -46,7 +46,7 @@ export default function InteractivesPage() {
           {WIDGETS.map(({ id, title, about, lesson, Component }) => {
             const l = lesson ? getLesson(lesson) : undefined
             return (
-              <section key={id} id={id} className="scroll-mt-16">
+              <section key={id} id={id} data-widget={id} className="scroll-mt-16">
                 <h2 className="text-lg font-semibold text-dala-text">{title}</h2>
                 <p className="mb-3 mt-0.5 text-sm text-dala-muted">{about}</p>
                 <Component />
