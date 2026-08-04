@@ -18,11 +18,14 @@ export default defineConfig({
     trace: 'retain-on-failure',
     ...devices['Pixel 5'],
   },
-  webServer: {
-    command: 'node scripts/serve-dist.mjs 4173',
-    env: { PROD_ROUTES: '1' },
-    url: 'http://127.0.0.1:4173/',
-    reuseExistingServer: true,
-    timeout: 30000,
-  },
+  // С внешним BASE_URL локальная раздача не нужна.
+  webServer: process.env.BASE_URL
+    ? undefined
+    : {
+        command: 'node scripts/serve-dist.mjs 4173',
+        env: { PROD_ROUTES: '1' },
+        url: 'http://127.0.0.1:4173/',
+        reuseExistingServer: true,
+        timeout: 30000,
+      },
 })
